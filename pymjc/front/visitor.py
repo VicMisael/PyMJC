@@ -1551,7 +1551,18 @@ class TranslateVisitor(IRVisitor):
 
 
     def visit_class_decl_extends(self, element: ClassDeclExtends) -> translate.Exp:
-        pass
+        # Aceita o visitor tanto no nome da classe como no nome da super class
+        element.class_name_id.accept_ir(self)
+        element.super_class_name_id.accept_ir(self)
+
+        self.symbol_table.set_curr_class(element.class_name_id.name)
+
+        for index in range(element.var_decl_list.size()):
+            element.var_decl_list.element_at(index).accept_ir(self) 
+        for index in range(element.method_decl_list.size()):
+            element.method_decl_list.element_at(index).accept_ir(self)
+        
+        return None
 
     def visit_class_decl_simple(self, element: ClassDeclSimple) -> translate.Exp:
         element.class_name_id.accept_ir(self)
@@ -1631,6 +1642,9 @@ class TranslateVisitor(IRVisitor):
 
     @abstractmethod
     def visit_if(self, element: If) -> translate.Exp:
+        # vou ter que usar CJump?
+        cond_exp:Exp=element.condition_exp.accept_ir(self)
+            
         pass
   
     @abstractmethod
@@ -1652,25 +1666,37 @@ class TranslateVisitor(IRVisitor):
     def visit_array_assign(self, element: ArrayAssign) -> translate.Exp:
         pass
 
-    @abstractmethod
     def visit_and(self, element: And) -> translate.Exp:
-        pass
+        #Duas expressions na operação, visitar-las primeiros
+        left: translate.Exp=element.left_side_exp.accept_ir(self)
+        right: translate.Exp=element.right_side_exp.accept_ir(self)
+
+        return translate.Exp(tree.BINOP(tree.BINOP.AND,left.un_ex(),right.un_ex()))
+        
 
     @abstractmethod
     def visit_less_than(self, element: LessThan) -> translate.Exp:
         pass
+    
 
-    @abstractmethod
     def visit_plus(self, element: Plus) -> translate.Exp:
-        pass
+        left: translate.Exp=element.left_side_exp.accept_ir(self)
+        right: translate.Exp=element.right_side_exp.accept_ir(self)
 
-    @abstractmethod
+        return translate.Exp(tree.BINOP(tree.BINOP.PLUS,left,right))
+
     def visit_minus(self, element: Minus) -> translate.Exp:
-        pass
+        left: translate.Exp=element.left_side_exp.accept_ir(self)
+        right: translate.Exp=element.right_side_exp.accept_ir(self)
 
-    @abstractmethod
+        return translate.Exp(tree.BINOP(tree.BINOP.MINUS,left,right))
+        
+
+    
     def visit_times(self, element: Times) -> translate.Exp:
-        pass
+        left: translate.Exp=element.left_side_exp.accept_ir(self)
+        right: translate.Exp=element.right_side_exp.accept_ir(self)
+        return translate.Exp(tree.BINOP(tree.BINOP.MUL,left,right))
 
     @abstractmethod
     def visit_array_lookup(self, element: ArrayLookup) -> translate.Exp:
