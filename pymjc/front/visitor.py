@@ -7,7 +7,8 @@ from pymjc.back.assem import MOVE
 from pymjc.front.ast import *
 from pymjc.front.frame import Frame
 from pymjc.front import translate
-from pymjc.front import tree #CONST, Stm, MOVE
+from pymjc.front import tree
+from pymjc.front.temp import Label #CONST, Stm, MOVE
 from pymjc.front.visitorkinds import *
 from pymjc.front.symbol import *
 from pymjc.log import MJLogger
@@ -1638,14 +1639,29 @@ class TranslateVisitor(IRVisitor):
 
     @abstractmethod
     def visit_block(self, element: Block) -> translate.Exp:
+        #Lista de statements
         pass
 
-    @abstractmethod
     def visit_if(self, element: If) -> translate.Exp:
-        # vou ter que usar CJump?
-        cond_exp:Exp=element.condition_exp.accept_ir(self)
-            
-        pass
+        #the expressions (Exp), which 
+        #stand for the computation of some value (possibly with side effects):
+        # vou ter que usar CJump? SIM
+        cond_exp:tree.Exp =element.condition_exp.accept_ir(self).un_ex()
+        #Vai ser preciso converter pra statement
+        true_exp:tree.EXP=tree.EXP(element.if_statement.accept_ir(self).un_ex())
+        false_exp:tree.EXP=tree.EXP(element.else_statement.accept_ir(self).un_ex())
+        # O livro afirma que a opção mais direta é criar duas labels para qual o código vai pular
+        truelbl:tree.Label = Label()
+        falselbl:tree.Label= Label()
+        # Expressões booleanas acima, se  1 = true
+        #Criar os statements com label        
+        #Cria a seq com a true_exp, e define o endereço para truelbl
+        statementtrue:tree.SEQ=tree.SEQ(tree.LABEL(truelbl),true_exp)
+        statementfalse:tree.SEQ=tree.SEQ(tree.LABEL(falselbl),false_exp)
+        statements:tree.SEQ(statementtrue,statementfalse)
+        cjumpif:tree.CJUMP=tree.CJUMP(tree.CJUMP.EQ,tree.CONST(1),cond_exp,truelbl,falselbl)
+        #ESEQ pois vamos avaliar CJUMPIF, e executar um dos statements caso
+        return tree.ESEQ(cjumpif,statements)
   
     @abstractmethod
     def visit_while(self, element: While) -> translate.Exp:
@@ -1662,8 +1678,16 @@ class TranslateVisitor(IRVisitor):
 
         return translate.Exp(tree.ESEQ(assign, tree.CONST(0))) 
 
-    @abstractmethod
     def visit_array_assign(self, element: ArrayAssign) -> translate.Exp:
+        #Array assign seguindo o livro(como sempre)
+        #Cada objeto do array é acesso a partir de uma operação de multiplicação pelo tamanho da palavra dado no frame
+        identifier:tree.Exp=element.array_name_id.accept_ir(self).un_ex()
+        array_exp:tree.Exp=element.array_exp.accept_ir(self).un_ex()
+        right_side:tree.Exp=element.right_side_exp.accept_ir(self).un_ex()
+        #Operação para localização do array
+        operation:tree.BINOP=tree.BINOP(tree.BINOP.PLUS,identifier,tree.BINOP(tree.BINOP.MUL,array_exp,tree.CONST(self.current_frame.word_size)))
+
+
         pass
 
     def visit_and(self, element: And) -> translate.Exp:
