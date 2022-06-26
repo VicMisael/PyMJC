@@ -668,7 +668,7 @@ class FillSymbolTableVisitor(Visitor):
     
     def visit_block(self, element: Block) -> None:
         for index in range(element.statement_list.size()):
-            element.statement_list.element_at(index).accept_ir(self).un_ex()
+            element.statement_list.element_at(index).accept(self)
 
     def visit_if(self, element: If) -> None:
         element.condition_exp.accept(self)
