@@ -1,5 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
+from ast import Return
 import sys
 import queue
 from typing import List, Set
@@ -475,29 +476,54 @@ class Liveness (InterferenceGraph):
             self.in_node_table[head]=Set[temp.Temp]
             self.out_node_table[head]=Set[temp.Temp]
             nodelist=nodelist.tail
-            finished:bool=False
-            while not finished:
-                nodelist:graph.NodeList=self.flowgraph.nodes()
-                head:graph.Node=nodelist.head
-                while (head is not None):
-                    node_list_head=nodelist.head
-                    in_set:Set(temp.Temp)=self.in_node_table[node_list_head]
-                    out_set:Set(temp.Temp)=self.out_node_table[node_list_head]
+            head:graph.Node=nodelist.head
+    
 
-                    nodelistsucc:graph.NodeList=node_list_head.succ()
-                    head_succ:graph.Node=nodelistsucc.head
-                    while (head_succ is not None):
-                        self.out_node_table[head_succ]=self.in_node_table[head_succ]
-                        nodelistsucc=nodelistsucc.tail
-                    self.out_node_table[head]={}
-                    self.gen_node_table[head]={}
-                    self.in_node_table[head]={}
-                    
-                    if((not all(elem in in_set for elem in self.in_node_table[head])) or
-                    (not all(elem in out_set for elem in self.out_node_table[head]))):
-                        finished=False
+        while True:
+            nodelist:graph.NodeList=self.flowgraph.nodes()
+            head:graph.Node=nodelist.head
 
+            while (head is not None):
+                # in e out
+                in_original:Set[temp.Temp]=self.in_node_table[head]
+                out_original:Set[temp.Temp]=self.out_node_table[head]
+                # in' e out'
+                in_set:Set[temp.Temp]=in_original
+                out_set:Set[temp.Temp]=out_original
+                # in[n] ← use[n] ∪ (out[n] − def[n])
+                self.in_node_table[head]=self.setof(self.flowgraph.use(head)).union(out_original.difference(self.setof(self.flowgraph.deff())))
+                # out[n] ←  s∈succ[n] in[s]
+                # para da s de succ em in, se eu tenho um conjunto de todos os succ e todos os in, o que tem nos 2 é a intereseção de ambos
+                self.out_node_table[head]=self.setofnode(head.succ()).intersection(in_original)
+                
+                if((not all(elem in in_set for elem in self.in_node_table[head])) or
+                (not all(elem in out_set for elem in self.out_node_table[head]))):
+                        break
+                else:
                     nodelist=nodelist.tail
+                    head=nodelist.head
+
+    def setof(self,list:temp.TempList)->Set[temp.Temp]:
+        _set:Set[temp.Temp]=set()
+        head:temp.Temp=list.head
+        tail:temp.TempList=list.tail
+        
+        while (head is not None):
+            _set.add(head)
+            head=tail.head
+            tail=tail.tail
+        return _set
+
+    def setofnode(self,list:graph.NodeList)->Set[graph.Node]:
+        _set:Set[graph.Node]=set()
+        head:graph.Node=list.head
+        tail:graph.NodeList=list.tail
+        
+        while (head is not None):
+            _set.add(head)
+            head=tail.head
+            tail=tail.tail
+        return _set
 
     def build_interference_graph(self):
         nodeList: graph.NodeList = self.flowgraph.nodes()
