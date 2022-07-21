@@ -448,16 +448,68 @@ class Liveness (InterferenceGraph):
         return self.move_list
 
     def build_gen_and_kill(self):
-        #TODO
-        pass
+        kill_node_hash_table:dict[graph.Node,Set(temp.Temp)]=[]
+        gen_node_hash_table:dict[graph.Node,Set(temp.Temp)]=[]
+        nodelist:graph.NodeList=self.flowgraph.nodes()
+        head:graph.Node=nodelist.head
+        while (head is not None):
+            nodelist=nodelist.tail
+            head=nodelist.head
+            temporary_kill:Set[graph.Node]=[]
+            temporary_gen:Set[graph.Node]=[]
+            temp_list:temp.TempList= self.flowgraph.use(head)
+            while (temp_list is not None):
+                temporary_gen.add(temp_list.head)
+                temp_list=temp_list.tail
+            temp_list_kill:temp.TempList= self.flowgraph.use(head)
+            while (temp_list_kill is not None):
+                temporary_kill.add(temp_list.head)
+                temp_list_kill=temp_list_kill.tail
+            kill_node_hash_table[nodelist.head]=temporary_kill
+            gen_node_hash_table[nodelist.head]=temporary_gen
 
     def build_in_and_out(self):
-        #TODO
-        pass
+        nodelist:graph.NodeList=self.flowgraph.nodes()
+        head:graph.Node=nodelist.head
+        while (head is not None):
+            self.in_node_table[head]=Set[temp.Temp]
+            self.out_node_table[head]=Set[temp.Temp]
+            nodelist=nodelist.tail
+            finished:bool=False
+            while not finished:
+                nodelist:graph.NodeList=self.flowgraph.nodes()
+                head:graph.Node=nodelist.head
+                while (head is not None):
+                    node_list_head=nodelist.head
+                    in_set:Set(temp.Temp)=self.in_node_table[node_list_head]
+                    out_set:Set(temp.Temp)=self.out_node_table[node_list_head]
+
+                    nodelistsucc:graph.NodeList=node_list_head.succ()
+                    head_succ:graph.Node=nodelistsucc.head
+                    while (head_succ is not None):
+                        self.out_node_table[head_succ]=self.in_node_table[head_succ]
+                        nodelistsucc=nodelistsucc.tail
+                    self.out_node_table[head]={}
+                    self.gen_node_table[head]={}
+                    self.in_node_table[head]={}
+                    
+                    if((not all(elem in in_set for elem in self.in_node_table[head])) or
+                    (not all(elem in out_set for elem in self.out_node_table[head]))):
+                        finished=False
+
+                    nodelist=nodelist.tail
 
     def build_interference_graph(self):
-        #TODO
-        pass
+        nodeList: graph.NodeList = self.flowgraph.nodes()
+
+        while nodeList.head != None:
+            if(self.flowgraph.is_move(nodeList.head)):
+                self.move_handler(nodeList.head())
+            else:
+                self.node_handler(nodeList.head())
+            nodeList = nodeList.tail
+        return None
+
 
 class Edge():
 
